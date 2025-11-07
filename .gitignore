@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# PyCharm project settings
+.idea/
+
+# SQLite DB (optional, you can include for exam if required)
+db.sqlite3
+
+# Media (if needed you can exclude or include, exam wants media included)
+# media/
+
+# Static files
+static/
+
+# Environment variables (if you add them later)
+.env
