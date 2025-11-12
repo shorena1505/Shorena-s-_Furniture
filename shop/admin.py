@@ -1,5 +1,7 @@
 from django.contrib import admin
-from .models import Category, Attribute, Product, ProductImage, CartItem, Cart
+from django.db.models import Sum
+
+from .models import Category, Attribute, Product, ProductImage, CartItem, Cart, OrderItem, Order
 
 
 @admin.register(Category)
@@ -48,3 +50,23 @@ class CartAdmin(admin.ModelAdmin):
 
     def total_items(self, obj):
         return obj.get_total_items_count()
+
+
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    autocomplete_fields = ("product",)
+    readonly_fields = ()
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ("order_number", "user", "status", "items_count", "total_amount", "created_at")
+    search_fields = ("order_number", "user__username", "user__email", "phone_number")
+    list_filter = ("status", "created_at")
+    readonly_fields = ("created_at", "updated_at")
+    inlines = [OrderItemInline]
+
+    def items_count(self, obj):
+        return obj.order_items.aggregate(total=Sum("quantity")).get("total") or 0
