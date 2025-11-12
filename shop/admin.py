@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Category, Attribute, Product, ProductImage
+from .models import Category, Attribute, Product, ProductImage, CartItem, Cart
 
 
 @admin.register(Category)
@@ -29,3 +29,22 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = ("category", "is_featured", "created_at")
     prepopulated_fields = {"slug": ("name",)}
     inlines = [ProductImageInline]
+
+
+
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    extra = 0
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = ("user", "total_items", "total_price", "updated_at")
+    search_fields = ("user__username", "user__email")
+    inlines = [CartItemInline]
+
+    # helper columns calling model methods
+    def total_price(self, obj):
+        return obj.get_total_price()
+
+    def total_items(self, obj):
+        return obj.get_total_items_count()
