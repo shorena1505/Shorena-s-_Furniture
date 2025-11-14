@@ -70,3 +70,5 @@ class OrderAdmin(admin.ModelAdmin):
 
     def items_count(self, obj):
         return obj.order_items.aggregate(total=Sum("quantity")).get("total") or 0
+
+readonly_fields = ("order_number", "created_at", "updated_at")

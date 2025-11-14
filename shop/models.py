@@ -1,8 +1,8 @@
 from celery.backends.base import pending_results_t
 from django.db import models
-
 from accounts.models import CustomUser
-
+from django.utils import timezone
+import secrets
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -91,6 +91,14 @@ class CartItem(models.Model):
 
 
 
+def generate_order_number():
+    now = timezone.now()
+    date_part = now.strftime("%Y%m%d-%H%M%S")
+    rand_part = f"{secrets.randbelow(1_000_000):06d}"
+    return f"ORD-{date_part}-{rand_part}"
+
+
+
 class Order(models.Model):
     ORDER_STATUS_CHOICES = [
         ("pending", "Pending"),
@@ -100,13 +108,21 @@ class Order(models.Model):
     ]
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
-    order_number = models.CharField(max_length=20, unique=True)
+    order_number = models.CharField(max_length=40, unique=True)
     status = models.CharField(max_length=20, choices=ORDER_STATUS_CHOICES, default="pending")
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     shipping_address = models.TextField(blank=True)
     phone_number = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.order_number:
+            candidate = generate_order_number()
+            while Order.objects.filter(order_number=candidate).exists():
+                candidate = generate_order_number()
+            self.order_number = candidate
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Order #{self.order_number}"
