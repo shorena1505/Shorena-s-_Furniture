@@ -4,7 +4,7 @@ from .models import CustomUser
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("username", "email", "first_name", "last_name", "phone", "address", "is_staff")
+    list_display = ("username", "email", "first_name", "last_name", "phone", "address", "id", "is_staff")
     search_fields = ("username", "phone")
     list_filter = ("address", "is_staff", "is_superuser", "is_active", "groups")
 
