@@ -1,13 +1,18 @@
 from rest_framework import status
-from rest_framework.generics import ListAPIView, RetrieveAPIView, get_object_or_404
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from shop.models import Category, Product, Cart, CartItem, OrderItem
-from shop.serializers import CategorySerializer, ProductSerializer, CartSerializer, AddToCartSerializer, \
-    CreateOrderSerializer
-from .models import Order
-from .serializers import OrderSerializer
+from django.shortcuts import get_object_or_404
+from .models import Category, Product, Cart, CartItem, OrderItem, Order
+from .serializers import (
+    CategorySerializer,
+    ProductSerializer,
+    CartSerializer,
+    AddToCartSerializer,
+    CreateOrderSerializer,
+    OrderSerializer,
+)
+from .tasks import send_order_confirmation_email, update_order_status
 
 
 class CategoryListView(ListAPIView):
@@ -39,10 +44,12 @@ class CartView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         cart = self.get_object()
         if cart is None:
-            return Response({"detail": "Cart not found for this user."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Cart not found for this user."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         serializer = self.get_serializer(cart)
         return Response(serializer.data)
-
 
 
 class AddToCartView(APIView):
@@ -72,7 +79,6 @@ class AddToCartView(APIView):
         return Response(cart_serializer.data, status=status.HTTP_200_OK)
 
 
-
 class CreateOrderView(APIView):
     def post(self, request):
         serializer = CreateOrderSerializer(data=request.data)
@@ -83,7 +89,7 @@ class CreateOrderView(APIView):
         shipping_address = serializer.validated_data["shipping_address"]
         phone_number = serializer.validated_data["phone_number"]
 
-        # get cart for this user
+
         try:
             cart = Cart.objects.get(user_id=user_id)
         except Cart.DoesNotExist:
@@ -101,6 +107,7 @@ class CreateOrderView(APIView):
 
         total_amount = cart.get_total_price()
 
+
         order = Order.objects.create(
             user_id=user_id,
             total_amount=total_amount,
@@ -116,7 +123,11 @@ class CreateOrderView(APIView):
                 price=item.product.price,
             )
 
+
         cart_items.delete()
+
+        send_order_confirmation_email.delay(order.id)
+        update_order_status.delay(order.id)
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
